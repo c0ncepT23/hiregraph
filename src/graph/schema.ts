@@ -175,6 +175,85 @@ export interface IdentityConfig {
   source: 'resume-upload' | 'manual';
 }
 
+// === Phase 1B: Job Fetching + Matching ===
+
+export interface CompanyRegistryEntry {
+  name: string;
+  slug: string;
+  ats: 'greenhouse' | 'lever' | 'ashby';
+  board_token: string;
+  domain?: string;
+  size?: 'startup' | 'growth' | 'enterprise';
+  hq_location?: string;
+  tags?: string[];
+}
+
+export interface JobListing {
+  id: string;
+  source: 'greenhouse' | 'lever' | 'ashby';
+  company: string;
+  company_slug: string;
+  title: string;
+  url: string;
+  location: string;
+  department?: string;
+  description_raw: string;
+  posted_at?: string;
+  updated_at?: string;
+  fetched_at: string;
+}
+
+export interface ParsedJobRequirements {
+  job_id: string;
+  must_have_skills: string[];
+  nice_to_have_skills: string[];
+  seniority_level: string;
+  tech_stack: string[];
+  domain: string;
+  remote_policy: 'remote' | 'hybrid' | 'onsite' | 'unknown';
+  compensation_range?: { min?: number; max?: number; currency?: string };
+  parsed_at: string;
+}
+
+export interface MatchResult {
+  job_id: string;
+  job_title: string;
+  company: string;
+  company_slug: string;
+  url: string;
+  score: number;
+  confidence: number;
+  tier: 'strong' | 'suggested' | 'filtered';
+  reasoning: string;
+  strengths: string[];
+  gaps: string[];
+  matched_at: string;
+}
+
+export interface MatchRun {
+  date: string;
+  total_jobs_fetched: number;
+  total_jobs_parsed: number;
+  total_candidates_evaluated: number;
+  strong_matches: MatchResult[];
+  suggested_matches: MatchResult[];
+  run_at: string;
+  cost_estimate: { jobs_parsed: number; pairs_evaluated: number; estimated_usd: number };
+}
+
+export interface JobsCache {
+  source: 'greenhouse' | 'lever' | 'ashby';
+  fetched_at: string;
+  companies_fetched: number;
+  total_jobs: number;
+  jobs: JobListing[];
+}
+
+export interface ParsedJobsCache {
+  parsed_at: string;
+  requirements: Record<string, ParsedJobRequirements>;
+}
+
 export function createEmptySkillGraph(identity: BuilderIdentity): SkillGraph {
   return {
     builder_identity: identity,
