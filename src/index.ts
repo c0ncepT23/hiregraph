@@ -7,13 +7,14 @@ import { matchesCommand } from './commands/matches.js';
 import { applyCommand } from './commands/apply.js';
 import { historyCommand } from './commands/history.js';
 import { installSkillCommand } from './commands/install-skill.js';
+import { setupCommand } from './commands/setup.js';
 
 const program = new Command();
 
 program
   .name('hiregraph')
   .description('Turn your code into job applications. Local-first CLI that scans codebases and builds skill graphs.')
-  .version('0.1.3');
+  .version('0.1.4');
 
 program
   .command('init')
@@ -71,6 +72,12 @@ program
   .option('--status <status>', 'New status (applied, screening, interview, offer, rejected, withdrawn, no-response)')
   .option('--notes <notes>', 'Optional notes')
   .action(historyCommand);
+
+program
+  .command('setup')
+  .description('Set up your Anthropic API key (required for LLM features)')
+  .option('--key <key>', 'Anthropic API key (starts with sk-ant-)')
+  .action(setupCommand);
 
 program
   .command('install-skill')
