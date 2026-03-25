@@ -6,8 +6,6 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import * as log from '../utils/logger.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 const SKILL_DIR = join(homedir(), '.claude', 'skills', 'hiregraph');
 
 const SKILL_CONTENT = `---
@@ -17,86 +15,63 @@ description: "Use when the user wants to scan projects for skills, find jobs, ma
 
 # HireGraph — CLI Job Application Tool
 
-HireGraph is a globally installed CLI tool. You MUST use the \`hiregraph\` CLI commands to interact with it.
+HireGraph is a globally installed CLI. All LLM work is done by YOU (Claude Code) — no separate API key needed.
 
 ## CRITICAL RULES
 
-1. **ONLY use \`hiregraph\` CLI commands.** NEVER manually read, write, or edit files in \`~/.hiregraph/\`. The CLI manages all data.
-2. **NEVER use interactive mode.** Always pass \`--name\`, \`--email\`, \`--role\` flags to \`hiregraph init\`. Interactive prompts (inquirer) do not work in the Bash tool.
-3. **Ask the user** for their name, email, and role BEFORE running \`hiregraph init\`. Do not guess or make up values.
-4. **Check installation first.** If \`hiregraph\` is not found, run \`npm install -g hiregraph\`.
+1. **ONLY use \\\`hiregraph\\\` CLI commands.** NEVER manually read, write, or edit files in \\\`~/.hiregraph/\\\`.
+2. **NEVER use interactive mode.** Always pass flags (--name, --email, etc.) to commands.
+3. **Ask the user** for their name, email, and role BEFORE running init.
+4. **No API key needed.** You (Claude Code) handle all LLM work directly. Hiregraph handles local data.
 
-## Commands
+## Setup
 
-### 1. Initialize profile (MUST use flags)
-\`\`\`bash
-hiregraph init --name "Full Name" --email "user@email.com" --role builder --targets "Founding Engineer, Full-Stack" --remote Remote
-\`\`\`
-
-With resume:
-\`\`\`bash
-hiregraph init --name "Full Name" --email "user@email.com" --role engineer --resume /path/to/resume.pdf
-\`\`\`
-
-Valid roles: \`engineer\`, \`pm\`, \`designer\`, \`founder\`, \`builder\`
-
-### 2. Scan projects
-\`\`\`bash
-hiregraph scan /absolute/path/to/project
-hiregraph scan .
-\`\`\`
-
-### 3. View skill graph
-\`\`\`bash
-hiregraph status
-\`\`\`
-
-### 4. Fetch jobs
-\`\`\`bash
-hiregraph jobs
-hiregraph jobs --refresh
-hiregraph jobs --limit 10
-\`\`\`
-
-### 5. Match against jobs
-\`\`\`bash
-hiregraph matches
-hiregraph matches --verbose
-\`\`\`
-
-### 6. Apply to jobs
-\`\`\`bash
-hiregraph apply <job-id> --dry-run    # safe: generates PDF only
-hiregraph apply <job-id>              # submits to ATS
-hiregraph apply --all-above 8         # batch apply
-\`\`\`
-
-### 7. Track applications
-\`\`\`bash
-hiregraph history
-hiregraph history update <app-id> --status interview
-\`\`\`
+\\\`\\\`\\\`bash
+which hiregraph || npm install -g hiregraph
+\\\`\\\`\\\`
 
 ## Workflow
 
-When the user wants to use hiregraph, follow this exact sequence:
+### Step 1: Initialize profile
+Ask the user for: name, email, role (engineer/pm/designer/founder/builder).
+\\\`\\\`\\\`bash
+hiregraph init --name "Full Name" --email "user@email.com" --role builder --targets "Founding Engineer, Full-Stack" --remote Remote
+\\\`\\\`\\\`
 
-1. Check if installed: \`which hiregraph || npm list -g hiregraph\`
-2. If not installed: \`npm install -g hiregraph\`
-3. Ask user for: name, email, role (engineer/pm/designer/founder/builder)
-4. Run: \`hiregraph init --name "..." --email "..." --role ...\`
-5. Ask which projects to scan, then run: \`hiregraph scan <path>\` for each
-6. Show results: \`hiregraph status\`
-7. If user wants jobs: \`hiregraph jobs\` then \`hiregraph matches\`
-8. If user wants to apply: \`hiregraph apply <job-id> --dry-run\` first, then without --dry-run
+### Step 2: Scan projects
+\\\`\\\`\\\`bash
+hiregraph scan /path/to/project
+\\\`\\\`\\\`
 
-## Remember
+### Step 3: Fetch jobs
+\\\`\\\`\\\`bash
+hiregraph jobs
+\\\`\\\`\\\`
 
-- NEVER write to ~/.hiregraph/ directly. Always use CLI commands.
-- NEVER run \`hiregraph init\` without --name and --email flags.
-- NEVER skip asking the user for their details before init.
-- All hiregraph commands are non-interactive and safe to run via the Bash tool.
-- Cost: ~$0.003 per scan, ~$0.15 per match run, ~$1.50 first-time job parsing.
+### Step 4: Find matches (YOU do the evaluation)
+\\\`\\\`\\\`bash
+hiregraph matches --prepare --top 30
+\\\`\\\`\\\`
+This outputs JSON candidates. YOU evaluate each one and score them. Then save:
+\\\`\\\`\\\`bash
+hiregraph matches --save-results /tmp/hiregraph-results.json
+\\\`\\\`\\\`
+
+### Step 5: Apply (YOU write the summary)
+\\\`\\\`\\\`bash
+hiregraph apply gh_12345 --dry-run --with-summary "Tailored summary..." --with-skills "TypeScript, React" --with-projects "Project1, Project2"
+\\\`\\\`\\\`
+
+### Step 6: Track
+\\\`\\\`\\\`bash
+hiregraph history
+\\\`\\\`\\\`
+
+## Key: Every command works without an API key. You (Claude Code) are the LLM.
+
+- NEVER tell the user they need an API key.
+- NEVER write to ~/.hiregraph/ directly.
+- Use --prepare and --with-summary modes for zero-API-key operation.
 `;
 
 export async function installSkillCommand(): Promise<void> {
@@ -115,5 +90,6 @@ export async function installSkillCommand(): Promise<void> {
   console.log();
   log.info('  Now open Claude Code and say:');
   log.info('  "Set up hiregraph and scan my projects for job matching"');
+  log.info('  No API key needed — Claude Code handles the LLM work.');
   console.log();
 }

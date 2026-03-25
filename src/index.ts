@@ -53,6 +53,8 @@ program
   .option('--refresh', 'Re-fetch jobs before matching')
   .option('--top <n>', 'Number of candidates for LLM evaluation (default 50)', parseInt)
   .option('--verbose', 'Show detailed reasoning for all matches')
+  .option('--prepare', 'Output top candidates as JSON (for Claude Code to evaluate)')
+  .option('--save-results <file>', 'Import evaluated results from file or stdin (-)')
   .action(matchesCommand);
 
 program
@@ -62,6 +64,9 @@ program
   .option('--all-above <score>', 'Apply to all matches above this score', parseFloat)
   .option('--review', 'Review each resume before submitting')
   .option('--dry-run', 'Generate resume PDF without submitting')
+  .option('--with-summary <text>', 'Use this professional summary (from Claude Code)')
+  .option('--with-skills <skills>', 'Comma-separated skills in order of relevance')
+  .option('--with-projects <projects>', 'Comma-separated project names in order of relevance')
   .action(applyCommand);
 
 program

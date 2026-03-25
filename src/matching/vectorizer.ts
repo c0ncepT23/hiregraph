@@ -166,13 +166,21 @@ export function cosineSimilarity(a: TermVector, b: TermVector): number {
   return dotProduct / (a.magnitude * b.magnitude);
 }
 
+export function buildJobVectorFromRaw(description: string, title: string, vocab: Vocabulary): TermVector {
+  const tokens = [
+    ...tokenize(title),
+    ...tokenize(title), // title gets 2x weight
+    ...tokenize(description.slice(0, 3000)),
+  ];
+  return vectorize(tokens, vocab);
+}
+
 export function buildAllDocuments(
   graph: SkillGraph,
   requirements: Record<string, ParsedJobRequirements>,
 ): string[][] {
   const docs: string[][] = [];
 
-  // Skill graph as a document
   const skillTokens: string[] = [];
   for (const skill of Object.keys(graph.tech_stack)) {
     skillTokens.push(...tokenize(skill));
@@ -183,13 +191,36 @@ export function buildAllDocuments(
   }
   docs.push(skillTokens);
 
-  // Each job as a document
   for (const req of Object.values(requirements)) {
     const tokens: string[] = [];
     for (const s of req.must_have_skills) tokens.push(...tokenize(s));
     for (const s of req.nice_to_have_skills) tokens.push(...tokenize(s));
     for (const s of req.tech_stack) tokens.push(...tokenize(s));
     if (req.domain) tokens.push(...tokenize(req.domain));
+    docs.push(tokens);
+  }
+
+  return docs;
+}
+
+export function buildAllDocumentsFromRaw(
+  graph: SkillGraph,
+  jobs: Array<{ id: string; title: string; description_raw: string }>,
+): string[][] {
+  const docs: string[][] = [];
+
+  const skillTokens: string[] = [];
+  for (const skill of Object.keys(graph.tech_stack)) {
+    skillTokens.push(...tokenize(skill));
+  }
+  for (const proj of graph.projects) {
+    for (const s of proj.stack) skillTokens.push(...tokenize(s));
+    if (proj.domain) skillTokens.push(...tokenize(proj.domain));
+  }
+  docs.push(skillTokens);
+
+  for (const job of jobs) {
+    const tokens = [...tokenize(job.title), ...tokenize(job.description_raw.slice(0, 3000))];
     docs.push(tokens);
   }
 

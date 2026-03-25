@@ -7,20 +7,22 @@ import { tailorResume } from '../resume/tailorer.js';
 import { generateResumePdf, saveResumePdf } from '../resume/pdf-builder.js';
 import { submitApplication } from '../ats/submitter.js';
 import { isApiKeyConfigured } from '../llm/client.js';
-import type { MatchRun, MatchResult, JobListing, ParsedJobRequirements, JobsCache, ParsedJobsCache } from '../graph/schema.js';
+import type { MatchRun, MatchResult, JobListing, ParsedJobRequirements, JobsCache, ParsedJobsCache, ResumeTailoring } from '../graph/schema.js';
 import * as log from '../utils/logger.js';
 import * as spinner from '../utils/spinner.js';
 
 export async function applyCommand(
   jobId?: string,
-  options?: { allAbove?: number; review?: boolean; dryRun?: boolean },
+  options?: {
+    allAbove?: number;
+    review?: boolean;
+    dryRun?: boolean;
+    withSummary?: string;
+    withSkills?: string;
+    withProjects?: string;
+  },
 ): Promise<void> {
   log.header('\n  HireGraph Apply\n');
-
-  if (!isApiKeyConfigured()) {
-    log.warn('ANTHROPIC_API_KEY not set. Add it to your environment variables or run: $env:ANTHROPIC_API_KEY = "your-key"');
-    return;
-  }
 
   const graph = await loadGraph();
   if (!graph || graph.projects.length === 0) {
@@ -33,17 +35,25 @@ export async function applyCommand(
     return;
   }
 
-  // Load latest matches
+  // Check if we can do LLM tailoring or need external summary
+  const hasApiKey = isApiKeyConfigured();
+  const hasExternalSummary = !!options?.withSummary;
+
+  if (!hasApiKey && !hasExternalSummary) {
+    log.warn('No API key and no --with-summary provided.');
+    log.info('  Use --with-summary "Your tailored summary text" (Claude Code provides this)');
+    log.info('  Or set ANTHROPIC_API_KEY for automatic tailoring.');
+    return;
+  }
+
   const matchRun = await loadLatestMatches();
   if (!matchRun) {
     log.error('No match results found. Run `hiregraph matches` first.');
     return;
   }
 
-  // Load jobs and requirements caches
   const jobsMap = await loadJobsMap();
   const requirementsMap = await loadRequirementsMap();
-
   const history = await loadHistory();
 
   // Determine which matches to apply to
@@ -68,8 +78,6 @@ export async function applyCommand(
     targets = [match];
   } else {
     log.error('Provide a job-id or use --all-above <score>');
-    log.info('Usage: hiregraph apply <job-id> [--review] [--dry-run]');
-    log.info('       hiregraph apply --all-above 8');
     return;
   }
 
@@ -78,7 +86,6 @@ export async function applyCommand(
   let failed = 0;
 
   for (const match of targets) {
-    // Check if already applied
     if (findByJobId(history, match.job_id)) {
       log.dim(`  Skipped (already applied): ${match.job_title} @ ${match.company}`);
       skipped++;
@@ -86,26 +93,47 @@ export async function applyCommand(
     }
 
     const job = jobsMap.get(match.job_id);
-    const requirements = requirementsMap[match.job_id];
-
-    if (!job || !requirements) {
-      log.warn(`  Skipped (missing data): ${match.job_title} @ ${match.company}`);
+    if (!job) {
+      log.warn(`  Skipped (missing job data): ${match.job_title} @ ${match.company}`);
       failed++;
       continue;
     }
 
     console.log(`\n  ${chalk.bold(match.job_title)} @ ${match.company} (score: ${chalk.green(String(match.score))})`);
 
-    // Tailor resume
-    spinner.start('Tailoring resume...');
-    let tailoring;
-    try {
-      tailoring = await tailorResume(graph, job, requirements, match);
-      spinner.succeed('Resume tailored');
-    } catch (err: any) {
-      spinner.fail(`Tailoring failed: ${err.message}`);
-      failed++;
-      continue;
+    // Build tailoring — either from Haiku or from external summary
+    let tailoring: ResumeTailoring;
+
+    if (hasExternalSummary) {
+      // Claude Code provided the summary
+      tailoring = {
+        job_id: match.job_id,
+        professional_summary: options!.withSummary!,
+        project_order: options?.withProjects
+          ? options.withProjects.split(',').map(s => s.trim())
+          : graph.projects.map(p => p.name),
+        bullet_emphasis: {},
+        skills_order: options?.withSkills
+          ? options.withSkills.split(',').map(s => s.trim())
+          : Object.keys(graph.tech_stack),
+        generated_at: new Date().toISOString(),
+      };
+    } else {
+      // Use Haiku for tailoring
+      spinner.start('Tailoring resume...');
+      const requirements = requirementsMap[match.job_id];
+      try {
+        tailoring = await tailorResume(graph, job, requirements || {
+          job_id: match.job_id, must_have_skills: [], nice_to_have_skills: [],
+          seniority_level: 'mid', tech_stack: [], domain: 'unknown',
+          remote_policy: 'unknown', parsed_at: new Date().toISOString(),
+        }, match);
+        spinner.succeed('Resume tailored');
+      } catch (err: any) {
+        spinner.fail(`Tailoring failed: ${err.message}`);
+        failed++;
+        continue;
+      }
     }
 
     // Review mode
@@ -114,8 +142,6 @@ export async function applyCommand(
       console.log(`  ${chalk.bold('Summary:')} ${tailoring.professional_summary}`);
       console.log(`  ${chalk.bold('Projects:')} ${tailoring.project_order.join(' > ')}`);
       console.log(`  ${chalk.bold('Skills:')} ${tailoring.skills_order.slice(0, 8).join(', ')}`);
-      console.log(`  ${chalk.bold('Strengths:')} ${match.strengths.join(', ')}`);
-      console.log(`  ${chalk.bold('Gaps:')} ${match.gaps.join(', ')}`);
       console.log();
 
       const { proceed } = await inquirer.prompt([{
@@ -146,7 +172,7 @@ export async function applyCommand(
       continue;
     }
 
-    // Dry run — stop here
+    // Dry run
     if (options?.dryRun) {
       log.success(`  [dry-run] Resume generated but not submitted`);
       applied++;
@@ -159,7 +185,6 @@ export async function applyCommand(
     if (result.success) {
       spinner.succeed(result.message);
 
-      // Record in history
       const appId = generateAppId();
       await addApplication({
         id: appId,
@@ -183,13 +208,11 @@ export async function applyCommand(
       failed++;
     }
 
-    // Delay between batch submissions
     if (targets.length > 1) {
       await new Promise(r => setTimeout(r, 2000));
     }
   }
 
-  // Summary
   console.log();
   console.log(`  ${chalk.bold('Summary:')}`);
   console.log(`    Applied:  ${chalk.green(String(applied))}`);
@@ -199,7 +222,6 @@ export async function applyCommand(
 }
 
 async function loadLatestMatches(): Promise<MatchRun | null> {
-  // Try today first, then yesterday
   const today = new Date().toISOString().slice(0, 10);
   let run = await loadSubJson<MatchRun>('matches', `${today}.json`);
   if (run) return run;
@@ -214,9 +236,7 @@ async function loadJobsMap(): Promise<Map<string, JobListing>> {
   for (const source of ['greenhouse', 'lever', 'ashby'] as const) {
     const cache = await loadSubJson<JobsCache>('jobs', `${source}.json`);
     if (cache) {
-      for (const job of cache.jobs) {
-        map.set(job.id, job);
-      }
+      for (const job of cache.jobs) map.set(job.id, job);
     }
   }
   return map;
