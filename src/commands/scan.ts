@@ -90,7 +90,7 @@ export async function scanCommand(path: string): Promise<void> {
       spinner.fail('Layer 7: LLM classification failed');
     }
   } else {
-    log.dim('  Layer 7: Skipped (no ANTHROPIC_API_KEY)');
+    log.dim('  Layer 7: Skipped (no API key — run inside Claude Code for full analysis)');
   }
 
   // Build scan result

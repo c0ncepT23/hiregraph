@@ -22,7 +22,7 @@ export async function parseJobsBatch(
   jobs: JobListing[],
 ): Promise<Record<string, ParsedJobRequirements>> {
   if (!isApiKeyConfigured()) {
-    throw new Error('ANTHROPIC_API_KEY required for job parsing.');
+    throw new Error('No API key detected. Run hiregraph inside Claude Code or Cursor.');
   }
 
   // Load existing cache

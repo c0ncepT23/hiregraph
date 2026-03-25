@@ -33,7 +33,7 @@ export async function evaluateMatchesBatch(
   graph: SkillGraph,
 ): Promise<MatchResult[]> {
   if (!isApiKeyConfigured()) {
-    throw new Error('ANTHROPIC_API_KEY required for match evaluation.');
+    throw new Error('No API key detected. Run hiregraph inside Claude Code or Cursor.');
   }
 
   const skillSummary = buildSkillSummary(graph);

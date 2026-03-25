@@ -8,8 +8,8 @@ export async function matchesCommand(options: { refresh?: boolean; top?: number;
   log.header('\n  HireGraph Matches\n');
 
   if (!isApiKeyConfigured()) {
-    log.error('ANTHROPIC_API_KEY required for matching. Set it in your environment.');
-    process.exit(1);
+    log.warn('No API key detected. Run hiregraph inside Claude Code or Cursor for automatic access.');
+    return;
   }
 
   try {

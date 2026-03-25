@@ -8,11 +8,8 @@ export function isApiKeyConfigured(): boolean {
 
 function getClient(): Anthropic {
   if (!client) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error(
-        'ANTHROPIC_API_KEY not set. Set it in your environment or run inside Claude Code.'
-      );
-    }
+    // ANTHROPIC_API_KEY is auto-detected by the SDK from process.env.
+    // Claude Code / Cursor users already have this set — zero config needed.
     client = new Anthropic();
   }
   return client;

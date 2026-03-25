@@ -42,7 +42,7 @@ export async function parseResume(filePath: string): Promise<ParsedResume> {
   }
 
   if (!isApiKeyConfigured()) {
-    throw new Error('ANTHROPIC_API_KEY required for resume parsing. Set it in your environment.');
+    throw new Error('No API key detected. Run hiregraph inside Claude Code or Cursor for resume parsing.');
   }
 
   const response = await callHaiku(SYSTEM_PROMPT, `Extract structured data from this resume:\n\n${text}`);
