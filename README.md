@@ -12,7 +12,28 @@ Open Source | Local-First | Bring Your Own Key
 npm install -g hiregraph
 ```
 
-That's it. No account. No sign up. HireGraph reads `ANTHROPIC_API_KEY` from your environment — the same key Claude Code or Cursor already uses.
+### For Claude Code users (recommended)
+
+```bash
+npm install -g hiregraph
+hiregraph install-skill
+```
+
+Then open Claude Code and say: *"Set up hiregraph and scan my projects"*. Claude Code handles everything — no manual commands needed.
+
+### Or install the skill directly
+
+```bash
+npx skills add https://github.com/c0ncepT23/hiregraph --skill hiregraph --yes --global
+```
+
+### API Key
+
+HireGraph reads `ANTHROPIC_API_KEY` from your environment. Set it once:
+
+- **Mac/Linux:** `export ANTHROPIC_API_KEY="sk-ant-..."` (add to `~/.bashrc` or `~/.zshrc`)
+- **Windows:** Add `ANTHROPIC_API_KEY` to System Environment Variables
+- **Claude Code:** Already set automatically
 
 ## Quick Start
 
