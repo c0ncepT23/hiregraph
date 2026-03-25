@@ -7,7 +7,8 @@
     "hiregraph": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/data"
   ],
   "scripts": {
     "build": "tsup",
@@ -22,9 +23,23 @@
     "resume",
     "code-analysis",
     "skill-graph",
-    "job-search"
+    "job-search",
+    "ats",
+    "greenhouse",
+    "lever",
+    "ashby",
+    "local-first",
+    "byok",
+    "claude",
+    "ai"
   ],
   "license": "MIT",
+  "author": "HireGraph Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hiregraph/hiregraph"
+  },
+  "homepage": "https://github.com/hiregraph/hiregraph#readme",
   "engines": {
     "node": ">=18"
   },
