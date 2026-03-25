@@ -1,6 +1,6 @@
 {
   "name": "hiregraph",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn your code into job applications. Local-first CLI that scans codebases, builds skill graphs, and matches against jobs.",
   "type": "module",
   "bin": {

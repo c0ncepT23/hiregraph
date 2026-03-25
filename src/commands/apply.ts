@@ -18,7 +18,7 @@ export async function applyCommand(
   log.header('\n  HireGraph Apply\n');
 
   if (!isApiKeyConfigured()) {
-    log.warn('No API key detected. Run hiregraph inside Claude Code or Cursor.');
+    log.warn('ANTHROPIC_API_KEY not set. Add it to your environment variables or run: $env:ANTHROPIC_API_KEY = "your-key"');
     return;
   }
 

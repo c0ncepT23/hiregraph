@@ -54,7 +54,7 @@ export async function initCommand(): Promise<void> {
 
   if (hasResume) {
     if (!isApiKeyConfigured()) {
-      log.warn('No API key detected. Run inside Claude Code for resume parsing. Using manual flow.');
+      log.warn('ANTHROPIC_API_KEY not set — skipping resume parsing. Set it in your environment for full features.');
     } else {
       const { resumePath } = await inquirer.prompt([{
         type: 'input',

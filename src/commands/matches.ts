@@ -8,7 +8,7 @@ export async function matchesCommand(options: { refresh?: boolean; top?: number;
   log.header('\n  HireGraph Matches\n');
 
   if (!isApiKeyConfigured()) {
-    log.warn('No API key detected. Run hiregraph inside Claude Code or Cursor for automatic access.');
+    log.warn('ANTHROPIC_API_KEY not set. Add it to your environment variables or run: $env:ANTHROPIC_API_KEY = "your-key"');
     return;
   }
 
