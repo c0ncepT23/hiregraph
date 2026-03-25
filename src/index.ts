@@ -4,6 +4,8 @@ import { scanCommand } from './commands/scan.js';
 import { statusCommand } from './commands/status.js';
 import { jobsCommand } from './commands/jobs.js';
 import { matchesCommand } from './commands/matches.js';
+import { applyCommand } from './commands/apply.js';
+import { historyCommand } from './commands/history.js';
 
 const program = new Command();
 
@@ -43,5 +45,23 @@ program
   .option('--top <n>', 'Number of candidates for LLM evaluation (default 50)', parseInt)
   .option('--verbose', 'Show detailed reasoning for all matches')
   .action(matchesCommand);
+
+program
+  .command('apply')
+  .description('Generate a tailored resume and submit to ATS')
+  .argument('[job-id]', 'Job ID to apply to')
+  .option('--all-above <score>', 'Apply to all matches above this score', parseFloat)
+  .option('--review', 'Review each resume before submitting')
+  .option('--dry-run', 'Generate resume PDF without submitting')
+  .action(applyCommand);
+
+program
+  .command('history')
+  .description('View and manage your application history')
+  .argument('[action]', 'Action: "update"')
+  .argument('[id]', 'Application ID')
+  .option('--status <status>', 'New status (applied, screening, interview, offer, rejected, withdrawn, no-response)')
+  .option('--notes <notes>', 'Optional notes')
+  .action(historyCommand);
 
 program.parse();

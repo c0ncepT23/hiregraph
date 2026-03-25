@@ -30,6 +30,7 @@ export interface WorkHistory {
   role: string;
   start_year: number;
   end_year?: number;
+  bullets?: string[];
 }
 
 export interface Education {
@@ -252,6 +253,47 @@ export interface JobsCache {
 export interface ParsedJobsCache {
   parsed_at: string;
   requirements: Record<string, ParsedJobRequirements>;
+}
+
+// === Phase 1C: Resume Generation + Application Tracking ===
+
+export interface ResumeTailoring {
+  job_id: string;
+  professional_summary: string;
+  project_order: string[];
+  bullet_emphasis: Record<string, string[]>;
+  skills_order: string[];
+  generated_at: string;
+}
+
+export type ApplicationStatus =
+  | 'applied'
+  | 'screening'
+  | 'interview'
+  | 'offer'
+  | 'rejected'
+  | 'withdrawn'
+  | 'no-response';
+
+export interface ApplicationRecord {
+  id: string;
+  job_id: string;
+  job_title: string;
+  company: string;
+  company_slug: string;
+  url: string;
+  ats_source: 'greenhouse' | 'lever' | 'ashby';
+  match_score: number;
+  resume_path: string;
+  status: ApplicationStatus;
+  applied_at: string;
+  updated_at: string;
+  notes?: string;
+}
+
+export interface ApplicationHistory {
+  applications: ApplicationRecord[];
+  last_updated: string;
 }
 
 export function createEmptySkillGraph(identity: BuilderIdentity): SkillGraph {
