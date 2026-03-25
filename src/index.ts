@@ -12,11 +12,18 @@ const program = new Command();
 program
   .name('hiregraph')
   .description('Turn your code into job applications. Local-first CLI that scans codebases and builds skill graphs.')
-  .version('0.1.0');
+  .version('0.1.2');
 
 program
   .command('init')
   .description('Set up your builder profile (resume upload + preferences)')
+  .option('--name <name>', 'Your full name')
+  .option('--email <email>', 'Your email address')
+  .option('--role <role>', 'Your role (engineer, pm, designer, founder, builder)')
+  .option('--targets <roles>', 'Target roles, comma separated')
+  .option('--remote <pref>', 'Remote preference (Remote, Hybrid, Onsite)')
+  .option('--resume <path>', 'Path to resume PDF/TXT')
+  .option('--compensation <amount>', 'Minimum compensation')
   .action(initCommand);
 
 program
