@@ -121,6 +121,28 @@ export function buildSkillVector(graph: SkillGraph, vocab: Vocabulary): TermVect
     for (const s of proj.stack) tokens.push(...tokenize(s));
   }
 
+  // Identity: primary role and target roles (heavy weight for role-aware matching)
+  const identity = graph.builder_identity;
+  if (identity.primary_role) {
+    const roleTokens = tokenize(identity.primary_role);
+    for (let i = 0; i < 3; i++) tokens.push(...roleTokens);
+  }
+  for (const role of identity.target_roles || []) {
+    const roleTokens = tokenize(role);
+    for (let i = 0; i < 2; i++) tokens.push(...roleTokens);
+  }
+
+  // Work history role titles and companies
+  for (const w of identity.previous_companies || []) {
+    tokens.push(...tokenize(w.role));
+    tokens.push(...tokenize(w.company));
+  }
+
+  // Resume-extracted skills (includes non-tech skills like "stakeholder management")
+  for (const skill of identity.resume_skills || []) {
+    tokens.push(...tokenize(skill));
+  }
+
   return vectorize(tokens, vocab);
 }
 
@@ -189,6 +211,16 @@ export function buildAllDocuments(
     for (const s of proj.stack) skillTokens.push(...tokenize(s));
     if (proj.domain) skillTokens.push(...tokenize(proj.domain));
   }
+  // Include identity data so IDF accounts for role/skill terms
+  const identity = graph.builder_identity;
+  if (identity.primary_role) skillTokens.push(...tokenize(identity.primary_role));
+  for (const role of identity.target_roles || []) skillTokens.push(...tokenize(role));
+  for (const w of identity.previous_companies || []) {
+    skillTokens.push(...tokenize(w.role));
+  }
+  for (const skill of identity.resume_skills || []) {
+    skillTokens.push(...tokenize(skill));
+  }
   docs.push(skillTokens);
 
   for (const req of Object.values(requirements)) {
@@ -216,6 +248,16 @@ export function buildAllDocumentsFromRaw(
   for (const proj of graph.projects) {
     for (const s of proj.stack) skillTokens.push(...tokenize(s));
     if (proj.domain) skillTokens.push(...tokenize(proj.domain));
+  }
+  // Include identity data so IDF accounts for role/skill terms
+  const ident = graph.builder_identity;
+  if (ident.primary_role) skillTokens.push(...tokenize(ident.primary_role));
+  for (const role of ident.target_roles || []) skillTokens.push(...tokenize(role));
+  for (const w of ident.previous_companies || []) {
+    skillTokens.push(...tokenize(w.role));
+  }
+  for (const skill of ident.resume_skills || []) {
+    skillTokens.push(...tokenize(skill));
   }
   docs.push(skillTokens);
 

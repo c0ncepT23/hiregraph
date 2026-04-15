@@ -1,96 +1,102 @@
 import inquirer from 'inquirer';
-import { homedir } from 'os';
-import { join } from 'path';
-import { readFile, writeFile, appendFile } from 'fs/promises';
-import { existsSync } from 'fs';
+import { loadJson, saveJson } from '../storage/store.js';
 import { isApiKeyConfigured } from '../llm/client.js';
 import * as log from '../utils/logger.js';
+
+interface HireGraphConfig {
+  anthropic_api_key?: string;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+}
 
 export async function setupCommand(options: { key?: string }): Promise<void> {
   log.header('\n  HireGraph Setup\n');
 
-  // Check if already configured
-  if (isApiKeyConfigured()) {
-    log.success('  ANTHROPIC_API_KEY is already set. You\'re good to go!');
-    log.info('  Run `hiregraph init` to set up your profile.');
-    return;
-  }
+  const existing = await loadJson<HireGraphConfig>('config.json') || {};
 
-  console.log('  HireGraph needs an Anthropic API key to power LLM features');
-  console.log('  (job matching, resume tailoring, project classification).\n');
-  console.log('  This is separate from your Claude Code subscription.');
-  console.log('  Get a key at: https://console.anthropic.com/settings/keys\n');
-  console.log('  Anthropic offers free credits for new accounts.');
-  console.log('  HireGraph costs ~$2 for first setup, ~$0.15/day after.\n');
+  // API Key
+  if (options.key) {
+    existing.anthropic_api_key = options.key;
+  } else if (!existing.anthropic_api_key && !isApiKeyConfigured()) {
+    console.log('  HireGraph needs an Anthropic API key for LLM features.');
+    console.log('  Get one at: https://console.anthropic.com/settings/keys\n');
 
-  let apiKey = options.key;
-
-  if (!apiKey) {
-    const answer = await inquirer.prompt([{
+    const { key } = await inquirer.prompt([{
       type: 'password',
       name: 'key',
-      message: 'Paste your ANTHROPIC_API_KEY:',
+      message: 'Anthropic API key (sk-ant-...):',
       mask: '*',
     }]);
-    apiKey = answer.key;
+
+    if (key && key.startsWith('sk-ant-')) {
+      existing.anthropic_api_key = key;
+    } else if (key) {
+      log.error('  Invalid key. Should start with "sk-ant-"');
+      return;
+    }
+  } else if (existing.anthropic_api_key) {
+    log.success('  Anthropic API key: configured');
+  } else {
+    log.success('  Anthropic API key: set via environment');
   }
 
-  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
-    log.error('  Invalid key. It should start with "sk-ant-"');
-    return;
-  }
+  // Telegram (optional)
+  if (!existing.telegram_bot_token) {
+    console.log();
+    console.log('  Telegram enables: auto-apply via phone, question confirmations.');
+    console.log('  Create a bot at @BotFather, get your chat ID from @userinfobot.\n');
 
-  // Set for current process
-  process.env.ANTHROPIC_API_KEY = apiKey;
+    const { token } = await inquirer.prompt([{
+      type: 'input',
+      name: 'token',
+      message: 'Telegram bot token (or Enter to skip):',
+    }]);
 
-  // Persist to shell profile
-  const platform = process.platform;
-  if (platform === 'win32') {
-    // Windows: set via setx (persists across sessions)
-    const { execSync } = await import('child_process');
-    try {
-      execSync(`setx ANTHROPIC_API_KEY "${apiKey}"`, { stdio: 'pipe' });
-      log.success('  API key saved to Windows environment variables.');
-      log.warn('  Restart your terminal for it to take effect everywhere.');
-    } catch {
-      log.warn('  Could not save to system env. Set it manually:');
-      console.log(`  $env:ANTHROPIC_API_KEY = "${apiKey}"`);
+    if (token) {
+      existing.telegram_bot_token = token;
+
+      const { chatId } = await inquirer.prompt([{
+        type: 'input',
+        name: 'chatId',
+        message: 'Your Telegram chat ID:',
+      }]);
+
+      if (chatId) existing.telegram_chat_id = chatId;
     }
   } else {
-    // Mac/Linux: append to shell profile
-    const shell = process.env.SHELL || '/bin/bash';
-    const rcFile = shell.includes('zsh')
-      ? join(homedir(), '.zshrc')
-      : join(homedir(), '.bashrc');
-
-    const exportLine = `\nexport ANTHROPIC_API_KEY="${apiKey}"\n`;
-
-    try {
-      if (existsSync(rcFile)) {
-        const content = await readFile(rcFile, 'utf-8');
-        if (content.includes('ANTHROPIC_API_KEY')) {
-          log.info(`  Key already in ${rcFile}. Updating...`);
-          const updated = content.replace(
-            /export ANTHROPIC_API_KEY="[^"]*"/,
-            `export ANTHROPIC_API_KEY="${apiKey}"`,
-          );
-          await writeFile(rcFile, updated, 'utf-8');
-        } else {
-          await appendFile(rcFile, exportLine);
-        }
-      } else {
-        await writeFile(rcFile, exportLine);
-      }
-      log.success(`  API key saved to ${rcFile}`);
-      log.warn('  Run `source ' + rcFile + '` or restart your terminal.');
-    } catch {
-      log.warn('  Could not save to shell profile. Set it manually:');
-      console.log(`  export ANTHROPIC_API_KEY="${apiKey}"`);
-    }
+    log.success('  Telegram: configured');
   }
 
+  await saveJson('config.json', existing);
+
+  // Also set for current process
+  if (existing.anthropic_api_key) process.env.ANTHROPIC_API_KEY = existing.anthropic_api_key;
+  if (existing.telegram_bot_token) process.env.TELEGRAM_BOT_TOKEN = existing.telegram_bot_token;
+  if (existing.telegram_chat_id) process.env.TELEGRAM_CHAT_ID = existing.telegram_chat_id;
+
   console.log();
-  log.success('  Setup complete! Now run:');
-  log.info('  hiregraph init --name "Your Name" --email "you@email.com" --role builder');
+  log.success('  Config saved to ~/.hiregraph/config.json');
+  log.info('  You never need to set env vars again.\n');
+  log.info('  Next: hiregraph init (if not done already)');
+  log.info('  Then: hiregraph auto-apply <url>');
   console.log();
+}
+
+/**
+ * Load config.json and set env vars if not already set.
+ * Call this early in every command.
+ */
+export async function loadConfig(): Promise<void> {
+  const config = await loadJson<HireGraphConfig>('config.json');
+  if (!config) return;
+
+  if (config.anthropic_api_key && !process.env.ANTHROPIC_API_KEY) {
+    process.env.ANTHROPIC_API_KEY = config.anthropic_api_key;
+  }
+  if (config.telegram_bot_token && !process.env.TELEGRAM_BOT_TOKEN) {
+    process.env.TELEGRAM_BOT_TOKEN = config.telegram_bot_token;
+  }
+  if (config.telegram_chat_id && !process.env.TELEGRAM_CHAT_ID) {
+    process.env.TELEGRAM_CHAT_ID = config.telegram_chat_id;
+  }
 }

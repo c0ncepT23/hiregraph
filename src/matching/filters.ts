@@ -4,6 +4,25 @@ export interface FilterConfig {
   excluded_companies: string[];
   remote_preference?: string;
   min_compensation?: string;
+  primary_role?: string;
+  target_roles?: string[];
+}
+
+const ROLE_CATEGORY_MAP: Record<string, string[]> = {
+  product: ['pm', 'product manager', 'product'],
+  engineering: ['engineer', 'engineering', 'developer', 'builder', 'founder'],
+  design: ['designer', 'design'],
+  data: ['data', 'analyst', 'data science'],
+  marketing: ['marketing', 'growth'],
+  operations: ['operations', 'ops'],
+};
+
+function detectUserRoleCategory(primaryRole: string): string {
+  const lower = primaryRole.toLowerCase();
+  for (const [category, keywords] of Object.entries(ROLE_CATEGORY_MAP)) {
+    if (keywords.some(k => lower.includes(k))) return category;
+  }
+  return 'engineering';
 }
 
 export interface FilterableJob {
@@ -30,6 +49,15 @@ export function applyHardFilters(
     if (config.min_compensation && requirements.compensation_range?.max) {
       const min = parseCompensation(config.min_compensation);
       if (min > 0 && requirements.compensation_range.max < min) {
+        return false;
+      }
+    }
+
+    // Role category filter
+    if (config.primary_role) {
+      const userCategory = detectUserRoleCategory(config.primary_role);
+      const jobCategory = requirements.role_category || 'engineering';
+      if (jobCategory !== 'other' && jobCategory !== userCategory) {
         return false;
       }
     }

@@ -16,6 +16,18 @@ const SIZE_BODY = 10.5;
 const SIZE_SMALL = 9.5;
 const COLOR_BLACK = '#000000';
 const COLOR_GRAY = '#444444';
+const COLOR_ACCENT = '#2B6CB0';
+
+const NON_ENGINEERING_ROLES = ['pm', 'product', 'designer', 'design', 'marketing', 'operations', 'consultant', 'manager'];
+
+const ROLE_DISPLAY_MAP: Record<string, string> = {
+  pm: 'Product Manager',
+  product: 'Product Manager',
+  engineer: 'Software Engineer',
+  designer: 'Designer',
+  founder: 'Founder',
+  builder: 'Builder',
+};
 
 const SKILL_CATEGORIES: Record<string, string[]> = {
   Languages: ['TypeScript', 'JavaScript', 'Python', 'Rust', 'Go', 'Java', 'C', 'C++', 'C#', 'Ruby', 'PHP', 'Swift', 'Kotlin', 'Dart', 'Scala', 'Elixir', 'Haskell', 'SQL', 'Shell', 'Lua', 'R', 'Zig'],
@@ -40,11 +52,22 @@ export async function generateResumePdf(
     doc.on('error', reject);
 
     const identity = graph.builder_identity;
+    const isNonEngineering = NON_ENGINEERING_ROLES.some(r =>
+      identity.primary_role?.toLowerCase().includes(r),
+    );
 
-    // Header
+    // Header — name + role title
     doc.font(FONT_BOLD).fontSize(SIZE_NAME).fillColor(COLOR_BLACK);
     doc.text(identity.name || 'Builder', { align: 'center' });
-    doc.moveDown(0.3);
+
+    // Role title below name
+    if (identity.primary_role) {
+      const displayRole = ROLE_DISPLAY_MAP[identity.primary_role.toLowerCase()]
+        || identity.primary_role.charAt(0).toUpperCase() + identity.primary_role.slice(1);
+      doc.font(FONT_BODY).fontSize(SIZE_BODY).fillColor(COLOR_ACCENT);
+      doc.text(displayRole, { align: 'center' });
+    }
+    doc.moveDown(0.2);
 
     const contactParts: string[] = [];
     if (identity.email) contactParts.push(identity.email);
@@ -56,10 +79,10 @@ export async function generateResumePdf(
 
     doc.font(FONT_BODY).fontSize(SIZE_SMALL).fillColor(COLOR_GRAY);
     if (contactParts.length > 0) {
-      doc.text(contactParts.join(' | '), { align: 'center' });
+      doc.text(contactParts.join('  |  '), { align: 'center' });
     }
     if (linkParts.length > 0) {
-      doc.text(linkParts.join(' | '), { align: 'center' });
+      doc.text(linkParts.join('  |  '), { align: 'center' });
     }
     doc.moveDown(0.8);
 
@@ -69,35 +92,25 @@ export async function generateResumePdf(
     doc.text(tailoring.professional_summary, { lineGap: 2 });
     doc.moveDown(0.6);
 
-    // Technical Skills
-    renderSectionHeader(doc, 'TECHNICAL SKILLS');
-    const categorized = categorizeSkills(tailoring.skills_order, graph);
-    doc.font(FONT_BODY).fontSize(SIZE_BODY).fillColor(COLOR_BLACK);
-    for (const [category, skills] of Object.entries(categorized)) {
-      if (skills.length > 0) {
-        doc.font(FONT_BOLD).text(`${category}: `, { continued: true });
-        doc.font(FONT_BODY).text(skills.join(', '));
-      }
-    }
-    doc.moveDown(0.6);
-
-    // Work Experience
-    if (identity.previous_companies && identity.previous_companies.length > 0) {
-      renderSectionHeader(doc, 'WORK EXPERIENCE');
-      for (const work of identity.previous_companies) {
-        renderWorkEntry(doc, work);
-      }
-      doc.moveDown(0.3);
+    // Core competencies (non-tech skills from resume)
+    const nonTechSkills = getNonTechSkills(identity.resume_skills || []);
+    if (nonTechSkills.length > 0) {
+      renderSectionHeader(doc, 'CORE COMPETENCIES');
+      doc.font(FONT_BODY).fontSize(SIZE_BODY).fillColor(COLOR_BLACK);
+      doc.text(nonTechSkills.join('  |  '), { lineGap: 2 });
+      doc.moveDown(0.6);
     }
 
-    // Projects
-    if (graph.projects.length > 0) {
-      renderSectionHeader(doc, 'PROJECTS');
-      const orderedProjects = orderProjects(graph.projects, tailoring.project_order);
-      for (const proj of orderedProjects.slice(0, 4)) {
-        renderProject(doc, proj, tailoring.bullet_emphasis[proj.name] || []);
-      }
-      doc.moveDown(0.3);
+    if (isNonEngineering) {
+      // Non-engineering: Work Experience first, then Skills, then Projects
+      renderWorkExperience(doc, identity);
+      renderTechnicalSkills(doc, tailoring, graph);
+      renderProjects(doc, graph, tailoring);
+    } else {
+      // Engineering: Skills first, then Work Experience, then Projects
+      renderTechnicalSkills(doc, tailoring, graph);
+      renderWorkExperience(doc, identity);
+      renderProjects(doc, graph, tailoring);
     }
 
     // Education
@@ -121,10 +134,51 @@ export async function saveResumePdf(pdfBuffer: Buffer, jobId: string): Promise<s
 }
 
 function renderSectionHeader(doc: PDFKit.PDFDocument, title: string): void {
-  doc.font(FONT_BOLD).fontSize(SIZE_SECTION).fillColor(COLOR_BLACK);
+  doc.font(FONT_BOLD).fontSize(SIZE_SECTION).fillColor(COLOR_ACCENT);
   doc.text(title);
-  doc.moveTo(MARGIN, doc.y + 2).lineTo(PAGE_WIDTH - MARGIN, doc.y + 2).strokeColor(COLOR_GRAY).lineWidth(0.5).stroke();
+  doc.moveTo(MARGIN, doc.y + 2).lineTo(PAGE_WIDTH - MARGIN, doc.y + 2).strokeColor(COLOR_ACCENT).lineWidth(0.75).stroke();
   doc.moveDown(0.4);
+}
+
+function renderWorkExperience(doc: PDFKit.PDFDocument, identity: SkillGraph['builder_identity']): void {
+  if (identity.previous_companies && identity.previous_companies.length > 0) {
+    renderSectionHeader(doc, 'WORK EXPERIENCE');
+    for (const work of identity.previous_companies) {
+      renderWorkEntry(doc, work);
+    }
+    doc.moveDown(0.3);
+  }
+}
+
+function renderTechnicalSkills(doc: PDFKit.PDFDocument, tailoring: ResumeTailoring, graph: SkillGraph): void {
+  renderSectionHeader(doc, 'TECHNICAL SKILLS');
+  const categorized = categorizeSkills(tailoring.skills_order, graph);
+  doc.font(FONT_BODY).fontSize(SIZE_BODY).fillColor(COLOR_BLACK);
+  for (const [category, skills] of Object.entries(categorized)) {
+    if (skills.length > 0) {
+      doc.font(FONT_BOLD).text(`${category}: `, { continued: true });
+      doc.font(FONT_BODY).text(skills.join(', '));
+    }
+  }
+  doc.moveDown(0.6);
+}
+
+function renderProjects(doc: PDFKit.PDFDocument, graph: SkillGraph, tailoring: ResumeTailoring): void {
+  if (graph.projects.length > 0) {
+    renderSectionHeader(doc, 'PROJECTS');
+    const orderedProjects = orderProjects(graph.projects, tailoring.project_order);
+    for (const proj of orderedProjects.slice(0, 4)) {
+      renderProject(doc, proj, tailoring.bullet_emphasis[proj.name] || []);
+    }
+    doc.moveDown(0.3);
+  }
+}
+
+function getNonTechSkills(resumeSkills: string[]): string[] {
+  const allTechLower = new Set(
+    Object.values(SKILL_CATEGORIES).flat().map(s => s.toLowerCase()),
+  );
+  return resumeSkills.filter(s => !allTechLower.has(s.toLowerCase()));
 }
 
 function renderWorkEntry(doc: PDFKit.PDFDocument, work: WorkHistory): void {
@@ -212,14 +266,12 @@ function categorizeSkills(
 
 function generateDefaultBullets(proj: ProjectEntry): string[] {
   const bullets: string[] = [];
-  if (proj.commits > 0) {
-    bullets.push(`${proj.commits} commits over ${proj.active_days} active days${proj.contributors > 1 ? ` with ${proj.contributors} contributors` : ''}`);
+  if (proj.description) {
+    bullets.push(proj.description);
   }
-  const langStr = Object.entries(proj.languages)
-    .sort((a, b) => b[1].loc - a[1].loc)
-    .slice(0, 3)
-    .map(([lang, { loc }]) => `${lang} (${loc.toLocaleString()} LOC)`)
-    .join(', ');
-  if (langStr) bullets.push(`Built with ${langStr}`);
+  const stackStr = proj.stack.slice(0, 5).join(', ');
+  if (stackStr) {
+    bullets.push(`Built using ${stackStr}`);
+  }
   return bullets;
 }

@@ -52,11 +52,13 @@
     "inquirer": "^13.3.2",
     "ora": "^5.4.1",
     "pdf-parse": "^2.4.5",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.18.0",
+    "playwright": "^1.59.1"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/pdf-parse": "^1.1.5",
+    "@types/pdfkit": "^0.17.5",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

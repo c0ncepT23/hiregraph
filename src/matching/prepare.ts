@@ -122,9 +122,20 @@ export async function saveMatchResults(
 
 function buildSkillSummary(graph: SkillGraph): string {
   const lines: string[] = [];
+  const identity = graph.builder_identity;
 
-  if (graph.builder_identity.name) {
-    lines.push(`Name: ${graph.builder_identity.name} (${graph.builder_identity.primary_role})`);
+  if (identity.name) {
+    lines.push(`Name: ${identity.name} (${identity.primary_role})`);
+  }
+
+  // Target roles
+  if (identity.target_roles?.length > 0) {
+    lines.push(`Target roles: ${identity.target_roles.join(', ')}`);
+  }
+
+  // Professional skills from resume
+  if (identity.resume_skills && identity.resume_skills.length > 0) {
+    lines.push(`Professional skills: ${identity.resume_skills.join(', ')}`);
   }
 
   const skills = Object.entries(graph.tech_stack)
@@ -141,6 +152,7 @@ function buildSkillSummary(graph: SkillGraph): string {
     lines.push('Projects:');
     for (const proj of graph.projects) {
       lines.push(`  ${proj.name}: ${proj.domain || 'unknown'} — ${proj.stack.slice(0, 5).join(', ')}`);
+      if (proj.description) lines.push(`    ${proj.description}`);
     }
   }
 
@@ -149,10 +161,24 @@ function buildSkillSummary(graph: SkillGraph): string {
     lines.push(`Architecture: ${patterns.map(([n, { confidence }]) => `${n} (${confidence})`).join(', ')}`);
   }
 
-  if (graph.builder_identity.previous_companies.length > 0) {
+  // Work history with bullets
+  if (identity.previous_companies.length > 0) {
     lines.push('Work History:');
-    for (const w of graph.builder_identity.previous_companies) {
+    for (const w of identity.previous_companies) {
       lines.push(`  ${w.role} @ ${w.company} (${w.start_year}-${w.end_year || 'present'})`);
+      if (w.bullets?.length) {
+        for (const b of w.bullets.slice(0, 3)) {
+          lines.push(`    - ${b}`);
+        }
+      }
+    }
+  }
+
+  // Education
+  if (identity.education?.length > 0) {
+    lines.push('Education:');
+    for (const e of identity.education) {
+      lines.push(`  ${e.degree} in ${e.field}, ${e.institution} (${e.year})`);
     }
   }
 

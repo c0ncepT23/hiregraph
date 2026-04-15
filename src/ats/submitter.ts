@@ -68,7 +68,7 @@ async function submitToGreenhouse(
     const response = await fetch(url, {
       method: 'POST',
       headers: form.getHeaders(),
-      body: form.getBuffer(),
+      body: Uint8Array.from(form.getBuffer()),
       signal: AbortSignal.timeout(30000),
     });
 
@@ -104,7 +104,7 @@ async function submitToLever(
     const response = await fetch(url, {
       method: 'POST',
       headers: form.getHeaders(),
-      body: form.getBuffer(),
+      body: Uint8Array.from(form.getBuffer()),
       signal: AbortSignal.timeout(30000),
     });
 

@@ -34,6 +34,8 @@ export async function runMatchPipeline(options?: MatchPipelineOptions): Promise<
     excluded_companies: config?.excluded_companies || [],
     remote_preference: identity.remote_preference,
     min_compensation: identity.min_compensation,
+    primary_role: identity.primary_role,
+    target_roles: identity.target_roles,
   };
 
   // 3. Fetch jobs (from cache or fresh)

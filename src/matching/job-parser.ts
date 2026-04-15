@@ -12,6 +12,7 @@ Return JSON only, no markdown fences. Schema:
   "tech_stack": ["specific technologies mentioned"],
   "domain": "string (e.g., fintech, dev-tools, e-commerce)",
   "remote_policy": "remote|hybrid|onsite|unknown",
+  "role_category": "engineering|product|design|data|marketing|operations|other — classify based on the job's primary function, not just its title",
   "compensation_range": { "min": number|null, "max": number|null, "currency": "USD" } | null
 }`;
 
@@ -83,6 +84,7 @@ async function parseOneJob(job: JobListing): Promise<ParsedJobRequirements> {
     tech_stack: result.tech_stack || [],
     domain: result.domain || 'unknown',
     remote_policy: result.remote_policy || 'unknown',
+    role_category: result.role_category || 'engineering',
     compensation_range: result.compensation_range || undefined,
     parsed_at: new Date().toISOString(),
   };

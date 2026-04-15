@@ -22,6 +22,7 @@ export interface BuilderIdentity {
   previous_companies: WorkHistory[];
   education: Education[];
   links: Record<string, string>;
+  resume_skills?: string[];
   source: 'resume-upload' | 'manual';
 }
 
@@ -165,6 +166,10 @@ export interface IdentityConfig {
   name: string;
   email: string;
   phone?: string;
+  phone_country_code?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   primary_role: string;
   target_roles: string[];
   remote_preference: string;
@@ -173,6 +178,7 @@ export interface IdentityConfig {
   education: Education[];
   links: Record<string, string>;
   skills: string[];
+  resume_skills?: string[];
   source: 'resume-upload' | 'manual';
 }
 
@@ -212,6 +218,7 @@ export interface ParsedJobRequirements {
   tech_stack: string[];
   domain: string;
   remote_policy: 'remote' | 'hybrid' | 'onsite' | 'unknown';
+  role_category: 'engineering' | 'product' | 'design' | 'data' | 'marketing' | 'operations' | 'other';
   compensation_range?: { min?: number; max?: number; currency?: string };
   parsed_at: string;
 }
@@ -273,7 +280,8 @@ export type ApplicationStatus =
   | 'offer'
   | 'rejected'
   | 'withdrawn'
-  | 'no-response';
+  | 'no-response'
+  | 'login-blocked';
 
 export interface ApplicationRecord {
   id: string;
@@ -282,7 +290,7 @@ export interface ApplicationRecord {
   company: string;
   company_slug: string;
   url: string;
-  ats_source: 'greenhouse' | 'lever' | 'ashby';
+  ats_source: 'greenhouse' | 'lever' | 'ashby' | 'browser';
   match_score: number;
   resume_path: string;
   status: ApplicationStatus;

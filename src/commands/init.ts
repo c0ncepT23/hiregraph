@@ -143,6 +143,43 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
+  // Application-specific fields (for auto-apply form filling)
+  let phone = '';
+  let phoneCountryCode = '';
+  let city = '';
+  let country = '';
+  let currentCtc = '';
+  let expectedCtc = '';
+  let noticePeriod = '';
+  let visaSponsorship = '';
+  let linkedinUrl = '';
+
+  if (!isNonInteractive) {
+    console.log('\n  These help auto-fill job application forms:\n');
+
+    const appFields = await inquirer.prompt([
+      { type: 'input', name: 'phone', message: 'Phone number (digits only, no country code):', default: '' },
+      { type: 'input', name: 'phoneCountryCode', message: 'Phone country code (e.g. "India (+91)"):', default: '' },
+      { type: 'input', name: 'city', message: 'Current city:', default: '' },
+      { type: 'input', name: 'country', message: 'Country:', default: '' },
+      { type: 'input', name: 'linkedinUrl', message: 'LinkedIn URL:', default: '' },
+      { type: 'input', name: 'currentCtc', message: 'Current CTC/salary (e.g. "80 LPA" or "120000 USD"):', default: '' },
+      { type: 'input', name: 'expectedCtc', message: 'Expected CTC/salary:', default: '' },
+      { type: 'list', name: 'noticePeriod', message: 'Notice period:', choices: ['Immediate', '15 days', '30 days', '60 days', '90 days', 'Other'] },
+      { type: 'list', name: 'visaSponsorship', message: 'Do you need visa sponsorship?', choices: ['No', 'Yes'] },
+    ]);
+
+    phone = appFields.phone;
+    phoneCountryCode = appFields.phoneCountryCode;
+    city = appFields.city;
+    country = appFields.country;
+    linkedinUrl = appFields.linkedinUrl;
+    currentCtc = appFields.currentCtc;
+    expectedCtc = appFields.expectedCtc;
+    noticePeriod = appFields.noticePeriod === 'Other' ? '' : appFields.noticePeriod;
+    visaSponsorship = appFields.visaSponsorship;
+  }
+
   // Build identity
   const targets = targetRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
 
@@ -158,14 +195,33 @@ export async function initCommand(options: InitOptions): Promise<void> {
         previous_companies: [],
         education: [],
         links: {},
-        source: 'manual',
+        source: 'manual' as const,
       };
 
   if (name) identity.name = name;
   if (email) identity.email = email;
+  if (phone) identity.phone = phone;
+  if (linkedinUrl) {
+    identity.links = { ...identity.links, linkedin: linkedinUrl };
+  }
 
-  await saveJson('identity.json', identity);
-  await saveJson('config.json', { excluded_companies: [], auto_apply_threshold: 8 });
+  // Extra fields for identity.json (used for auto-apply form filling)
+  const saveData: Record<string, unknown> = { ...identity };
+  if (phoneCountryCode) saveData.phone_country_code = phoneCountryCode;
+  if (city) saveData.city = city;
+  if (country) saveData.country = country;
+  if (currentCtc) saveData.current_ctc = currentCtc;
+  if (expectedCtc) saveData.expected_ctc = expectedCtc;
+  if (noticePeriod) saveData.notice_period = noticePeriod;
+  if (visaSponsorship) saveData.visa_sponsorship = visaSponsorship;
+
+  await saveJson('identity.json', saveData);
+
+  // Preserve existing config (don't overwrite API keys)
+  const existingConfig = await loadJson<Record<string, unknown>>('config.json') || {};
+  existingConfig.excluded_companies = existingConfig.excluded_companies || [];
+  existingConfig.auto_apply_threshold = existingConfig.auto_apply_threshold || 8;
+  await saveJson('config.json', existingConfig);
 
   const graph = createEmptySkillGraph(identity);
   await saveGraph(graph);

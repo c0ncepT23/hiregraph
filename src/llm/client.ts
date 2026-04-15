@@ -6,7 +6,7 @@ export function isApiKeyConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-function getClient(): Anthropic {
+export function getClient(): Anthropic {
   if (!client) {
     // ANTHROPIC_API_KEY is auto-detected by the SDK from process.env.
     // Claude Code / Cursor users already have this set — zero config needed.

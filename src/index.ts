@@ -7,7 +7,9 @@ import { matchesCommand } from './commands/matches.js';
 import { applyCommand } from './commands/apply.js';
 import { historyCommand } from './commands/history.js';
 import { installSkillCommand } from './commands/install-skill.js';
-import { setupCommand } from './commands/setup.js';
+import { setupCommand, loadConfig } from './commands/setup.js';
+import { autoApplyCommand } from './commands/auto-apply.js';
+import { daemonCommand } from './commands/daemon.js';
 
 const program = new Command();
 
@@ -58,8 +60,8 @@ program
   .action(matchesCommand);
 
 program
-  .command('apply')
-  .description('Generate a tailored resume and submit to ATS')
+  .command('apply-api')
+  .description('Submit to ATS via API (Greenhouse/Lever/Ashby matched jobs)')
   .argument('[job-id]', 'Job ID to apply to')
   .option('--all-above <score>', 'Apply to all matches above this score', parseFloat)
   .option('--review', 'Review each resume before submitting')
@@ -67,6 +69,7 @@ program
   .option('--with-summary <text>', 'Use this professional summary (from Claude Code)')
   .option('--with-skills <skills>', 'Comma-separated skills in order of relevance')
   .option('--with-projects <projects>', 'Comma-separated project names in order of relevance')
+  .option('--with-bullets <json>', 'JSON object of project bullets (from Claude Code)')
   .action(applyCommand);
 
 program
@@ -79,6 +82,23 @@ program
   .action(historyCommand);
 
 program
+  .command('apply')
+  .description('Apply to a job by URL — auto-fills and submits via browser')
+  .argument('<url>', 'Job application URL')
+  .option('--learn', 'Force re-learn the form (ignore cached recipe)')
+  .option('--dry-run', 'Fill form but don\'t click Submit')
+  .option('--headless', 'Run browser in headless mode (default: visible)')
+  .option('--auto', 'Auto-answer all questions using LLM (no interactive prompts)')
+  .option('--resume <path>', 'Override resume PDF path')
+  .action(autoApplyCommand);
+
+program
+  .command('daemon')
+  .description('Start Telegram bot daemon — send job links via Telegram to auto-apply')
+  .option('--headless', 'Run browser in headless mode (default: true for daemon)')
+  .action(daemonCommand);
+
+program
   .command('setup')
   .description('Set up your Anthropic API key (required for LLM features)')
   .option('--key <key>', 'Anthropic API key (starts with sk-ant-)')
@@ -89,4 +109,5 @@ program
   .description('Install the HireGraph skill for Claude Code')
   .action(installSkillCommand);
 
-program.parse();
+// Load saved config (API keys, Telegram) before running any command
+loadConfig().then(() => program.parse());

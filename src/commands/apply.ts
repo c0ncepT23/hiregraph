@@ -20,6 +20,7 @@ export async function applyCommand(
     withSummary?: string;
     withSkills?: string;
     withProjects?: string;
+    withBullets?: string;
   },
 ): Promise<void> {
   log.header('\n  HireGraph Apply\n');
@@ -106,13 +107,17 @@ export async function applyCommand(
 
     if (hasExternalSummary) {
       // Claude Code provided the summary
+      let bulletEmphasis: Record<string, string[]> = {};
+      if (options?.withBullets) {
+        try { bulletEmphasis = JSON.parse(options.withBullets); } catch { /* ignore parse errors */ }
+      }
       tailoring = {
         job_id: match.job_id,
         professional_summary: options!.withSummary!,
         project_order: options?.withProjects
           ? options.withProjects.split(',').map(s => s.trim())
           : graph.projects.map(p => p.name),
-        bullet_emphasis: {},
+        bullet_emphasis: bulletEmphasis,
         skills_order: options?.withSkills
           ? options.withSkills.split(',').map(s => s.trim())
           : Object.keys(graph.tech_stack),
@@ -126,7 +131,8 @@ export async function applyCommand(
         tailoring = await tailorResume(graph, job, requirements || {
           job_id: match.job_id, must_have_skills: [], nice_to_have_skills: [],
           seniority_level: 'mid', tech_stack: [], domain: 'unknown',
-          remote_policy: 'unknown', parsed_at: new Date().toISOString(),
+          remote_policy: 'unknown', role_category: 'other',
+          parsed_at: new Date().toISOString(),
         }, match);
         spinner.succeed('Resume tailored');
       } catch (err: any) {

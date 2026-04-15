@@ -3,16 +3,17 @@ import { extname } from 'path';
 import { callHaiku, isApiKeyConfigured } from '../llm/client.js';
 import type { BuilderIdentity, WorkHistory, Education } from '../graph/schema.js';
 
-const SYSTEM_PROMPT = `You extract structured data from resume text.
+const SYSTEM_PROMPT = `You extract structured data from resume text. Extract ALL work history bullet points — these are the candidate's key achievements and must be preserved exactly.
 Return JSON only, no markdown fences. Schema:
 {
   "name": "string",
   "email": "string",
   "phone": "string or null",
   "links": { "github": "url", "linkedin": "url", "portfolio": "url" },
-  "work_history": [{ "company": "string", "role": "string", "start_year": number, "end_year": number|null }],
-  "skills": ["string array"],
-  "education": [{ "institution": "string", "degree": "string", "field": "string", "year": number }]
+  "work_history": [{ "company": "string", "role": "string", "start_year": number, "end_year": number|null, "bullets": ["achievement bullet strings exactly as written in resume"] }],
+  "skills": ["string array — include BOTH technical and professional skills (e.g. stakeholder management, product strategy, A/B testing, SQL, Python)"],
+  "education": [{ "institution": "string", "degree": "string", "field": "string", "year": number }],
+  "primary_role_detected": "string — the candidate's most likely functional role, e.g. Product Manager, Software Engineer, Designer"
 }`;
 
 export interface ParsedResume {
@@ -23,6 +24,7 @@ export interface ParsedResume {
   work_history: WorkHistory[];
   skills: string[];
   education: Education[];
+  primary_role_detected?: string;
 }
 
 export async function parseResume(filePath: string): Promise<ParsedResume> {
@@ -31,7 +33,8 @@ export async function parseResume(filePath: string): Promise<ParsedResume> {
 
   if (ext === '.pdf') {
     // Dynamic import for pdf-parse
-    const pdfParse = (await import('pdf-parse')).default;
+    const mod = await import('pdf-parse');
+    const pdfParse = (mod as any).default || mod;
     const buffer = await readFile(filePath);
     const data = await pdfParse(buffer);
     text = data.text;
@@ -59,8 +62,10 @@ export async function parseResume(filePath: string): Promise<ParsedResume> {
       role: w.role || '',
       start_year: w.start_year || 0,
       end_year: w.end_year || undefined,
+      bullets: w.bullets || [],
     })),
     skills: parsed.skills || [],
+    primary_role_detected: parsed.primary_role_detected || undefined,
     education: (parsed.education || []).map((e: any) => ({
       institution: e.institution || '',
       degree: e.degree || '',
@@ -82,6 +87,7 @@ export function resumeToIdentity(parsed: ParsedResume, role: string, targetRoles
     previous_companies: parsed.work_history,
     education: parsed.education,
     links: parsed.links,
+    resume_skills: parsed.skills,
     source: 'resume-upload',
   };
 }

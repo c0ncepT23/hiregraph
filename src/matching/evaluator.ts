@@ -5,11 +5,13 @@ import * as spinner from '../utils/spinner.js';
 const SYSTEM_PROMPT = `You evaluate job-candidate match quality. Given a candidate's verified skill profile and a job's requirements, score the match.
 
 Rules:
+- CRITICAL: Role alignment is the strongest signal. The candidate's target_roles define what they are seeking. A Product Manager seeking PM roles should score HIGH for PM jobs even if the job also mentions technical skills.
 - code-verified skills are confirmed facts. Weight heavily.
-- self-reported skills are unverified claims. Weight lower.
-- Proficiency scores: 0.8+ is strong, 0.5+ is moderate, below 0.3 is beginner.
+- Professional skills from resume (stakeholder management, product strategy, etc.) are strong signals for non-engineering roles.
+- Work history achievements demonstrate real-world impact. Weight these heavily for role fit.
 - For 'builder' profiles, value end-to-end ownership over single-area depth.
 - Be strict. 7/10 = genuinely strong match. 8+ = exceptional fit.
+- If the candidate's target roles and work history clearly align with the job's function (e.g., PM applying to PM role), that should boost the score significantly.
 
 Return JSON only, no markdown fences. Schema:
 {
@@ -101,9 +103,20 @@ async function evaluateOne(
 
 function buildSkillSummary(graph: SkillGraph): string {
   const lines: string[] = [];
+  const identity = graph.builder_identity;
 
-  if (graph.builder_identity.name) {
-    lines.push(`Name: ${graph.builder_identity.name} (${graph.builder_identity.primary_role})`);
+  if (identity.name) {
+    lines.push(`Name: ${identity.name} (${identity.primary_role})`);
+  }
+
+  // Target roles — what the candidate is looking for
+  if (identity.target_roles?.length > 0) {
+    lines.push(`Target roles: ${identity.target_roles.join(', ')}`);
+  }
+
+  // Professional skills from resume
+  if (identity.resume_skills && identity.resume_skills.length > 0) {
+    lines.push(`Professional skills: ${identity.resume_skills.join(', ')}`);
   }
 
   // Tech stack
@@ -133,6 +146,7 @@ function buildSkillSummary(graph: SkillGraph): string {
     lines.push(`Projects (${graph.projects.length}):`);
     for (const proj of graph.projects.slice(0, 5)) {
       lines.push(`  ${proj.name}: ${proj.domain || 'unknown'} — ${proj.stack.slice(0, 5).join(', ')}`);
+      if (proj.description) lines.push(`    ${proj.description}`);
     }
   }
 
@@ -144,11 +158,24 @@ function buildSkillSummary(graph: SkillGraph): string {
     lines.push('End-to-end builder: yes');
   }
 
-  // Work history
-  if (graph.builder_identity.previous_companies.length > 0) {
+  // Work history with bullets
+  if (identity.previous_companies.length > 0) {
     lines.push('Work history:');
-    for (const w of graph.builder_identity.previous_companies) {
+    for (const w of identity.previous_companies) {
       lines.push(`  ${w.role} @ ${w.company} (${w.start_year}-${w.end_year || 'present'})`);
+      if (w.bullets?.length) {
+        for (const b of w.bullets.slice(0, 3)) {
+          lines.push(`    - ${b}`);
+        }
+      }
+    }
+  }
+
+  // Education
+  if (identity.education?.length > 0) {
+    lines.push('Education:');
+    for (const e of identity.education) {
+      lines.push(`  ${e.degree} in ${e.field}, ${e.institution} (${e.year})`);
     }
   }
 
@@ -161,6 +188,7 @@ function buildJobSummary(job: JobListing, req: ParsedJobRequirements): string {
     `Company: ${job.company}`,
     `Location: ${job.location}`,
     `Seniority: ${req.seniority_level}`,
+    `Role category: ${req.role_category || 'engineering'}`,
     `Domain: ${req.domain}`,
     `Remote: ${req.remote_policy}`,
   ];
