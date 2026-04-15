@@ -15,8 +15,8 @@ const program = new Command();
 
 program
   .name('hiregraph')
-  .description('Turn your code into job applications. Local-first CLI that scans codebases and builds skill graphs.')
-  .version('0.1.4');
+  .description('Auto-apply to jobs from your terminal. Set up your profile, send a job link, done.')
+  .version('0.3.0');
 
 program
   .command('init')
@@ -30,56 +30,24 @@ program
   .option('--compensation <amount>', 'Minimum compensation')
   .action(initCommand);
 
-program
-  .command('scan')
-  .description('Scan a project and update your skill graph')
-  .argument('[path]', 'Path to the project directory', '.')
-  .action(scanCommand);
+// Feature-gated commands (kept functional, hidden from help)
+const scanCmd = program.command('scan').description('Scan a project and update your skill graph').argument('[path]', 'Path to the project directory', '.').action(scanCommand);
+scanCmd._hidden = true;
 
-program
-  .command('status')
-  .description('Show your current skill graph summary')
-  .action(statusCommand);
+const statusCmd = program.command('status').description('Show your current skill graph summary').action(statusCommand);
+statusCmd._hidden = true;
 
-program
-  .command('jobs')
-  .description('Fetch job listings from Greenhouse, Lever, and Ashby boards')
-  .option('--refresh', 'Force refresh cached jobs')
-  .option('--ats <type>', 'Filter by ATS type (greenhouse, lever, ashby)')
-  .option('--limit <n>', 'Show sample of N job titles', parseInt)
-  .action(jobsCommand);
+const jobsCmd = program.command('jobs').description('Fetch job listings from Greenhouse, Lever, and Ashby boards').option('--refresh', 'Force refresh cached jobs').option('--ats <type>', 'Filter by ATS type (greenhouse, lever, ashby)').option('--limit <n>', 'Show sample of N job titles', parseInt).action(jobsCommand);
+jobsCmd._hidden = true;
 
-program
-  .command('matches')
-  .description('Match your skill graph against fetched jobs')
-  .option('--refresh', 'Re-fetch jobs before matching')
-  .option('--top <n>', 'Number of candidates for LLM evaluation (default 50)', parseInt)
-  .option('--verbose', 'Show detailed reasoning for all matches')
-  .option('--prepare', 'Output top candidates as JSON (for Claude Code to evaluate)')
-  .option('--save-results <file>', 'Import evaluated results from file or stdin (-)')
-  .action(matchesCommand);
+const matchesCmd = program.command('matches').description('Match your skill graph against fetched jobs').option('--refresh', 'Re-fetch jobs before matching').option('--top <n>', 'Number of candidates for LLM evaluation (default 50)', parseInt).option('--verbose', 'Show detailed reasoning for all matches').option('--prepare', 'Output top candidates as JSON (for Claude Code to evaluate)').option('--save-results <file>', 'Import evaluated results from file or stdin (-)').action(matchesCommand);
+matchesCmd._hidden = true;
 
-program
-  .command('apply-api')
-  .description('Submit to ATS via API (Greenhouse/Lever/Ashby matched jobs)')
-  .argument('[job-id]', 'Job ID to apply to')
-  .option('--all-above <score>', 'Apply to all matches above this score', parseFloat)
-  .option('--review', 'Review each resume before submitting')
-  .option('--dry-run', 'Generate resume PDF without submitting')
-  .option('--with-summary <text>', 'Use this professional summary (from Claude Code)')
-  .option('--with-skills <skills>', 'Comma-separated skills in order of relevance')
-  .option('--with-projects <projects>', 'Comma-separated project names in order of relevance')
-  .option('--with-bullets <json>', 'JSON object of project bullets (from Claude Code)')
-  .action(applyCommand);
+const applyApiCmd = program.command('apply-api').description('Submit to ATS via API (Greenhouse/Lever/Ashby matched jobs)').argument('[job-id]', 'Job ID to apply to').option('--all-above <score>', 'Apply to all matches above this score', parseFloat).option('--review', 'Review each resume before submitting').option('--dry-run', 'Generate resume PDF without submitting').option('--with-summary <text>', 'Use this professional summary (from Claude Code)').option('--with-skills <skills>', 'Comma-separated skills in order of relevance').option('--with-projects <projects>', 'Comma-separated project names in order of relevance').option('--with-bullets <json>', 'JSON object of project bullets (from Claude Code)').action(applyCommand);
+applyApiCmd._hidden = true;
 
-program
-  .command('history')
-  .description('View and manage your application history')
-  .argument('[action]', 'Action: "update"')
-  .argument('[id]', 'Application ID')
-  .option('--status <status>', 'New status (applied, screening, interview, offer, rejected, withdrawn, no-response)')
-  .option('--notes <notes>', 'Optional notes')
-  .action(historyCommand);
+const historyCmd = program.command('history').description('View and manage your application history').argument('[action]', 'Action: "update"').argument('[id]', 'Application ID').option('--status <status>', 'New status (applied, screening, interview, offer, rejected, withdrawn, no-response)').option('--notes <notes>', 'Optional notes').action(historyCommand);
+historyCmd._hidden = true;
 
 program
   .command('apply')
@@ -104,10 +72,8 @@ program
   .option('--key <key>', 'Anthropic API key (starts with sk-ant-)')
   .action(setupCommand);
 
-program
-  .command('install-skill')
-  .description('Install the HireGraph skill for Claude Code')
-  .action(installSkillCommand);
+const installSkillCmd = program.command('install-skill').description('Install the HireGraph skill for Claude Code').action(installSkillCommand);
+installSkillCmd._hidden = true;
 
 // Load saved config (API keys, Telegram) before running any command
 loadConfig().then(() => program.parse());

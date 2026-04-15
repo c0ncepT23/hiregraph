@@ -1,7 +1,7 @@
 {
   "name": "hiregraph",
-  "version": "0.2.0",
-  "description": "Turn your code into job applications. Local-first CLI that scans codebases, builds skill graphs, and matches against jobs.",
+  "version": "0.3.0",
+  "description": "Auto-apply to jobs from your terminal. Set up your profile, send a job link, done.",
   "type": "module",
   "bin": {
     "hiregraph": "./dist/index.js"
