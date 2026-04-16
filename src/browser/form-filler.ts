@@ -21,6 +21,21 @@ export async function executeStep(
 
   for (const action of step.actions) {
     try {
+      // Check if the field is actually visible/present before attempting
+      const fieldLoc = page.locator(action.selector);
+      const fieldExists = await fieldLoc.count().catch(() => 0);
+      if (fieldExists === 0) {
+        skipped.push(action.id);
+        continue;
+      }
+
+      // Wait briefly for the field to be visible (handles fields that appear after other interactions)
+      const isVisible = await fieldLoc.first().isVisible({ timeout: 2000 }).catch(() => false);
+      if (!isVisible && action.action_type !== 'upload_file') {
+        skipped.push(action.id);
+        continue;
+      }
+
       // Get available options for radio/select fields
       let options: string[] | undefined;
       if (action.action_type === 'radio' || action.action_type === 'select_option') {
@@ -197,6 +212,30 @@ async function executeFill(page: Page, action: FieldAction, value: string): Prom
 
   await loc.first().scrollIntoViewIfNeeded({ timeout: 3000 });
 
+  // Detect the actual element type — learner sometimes misclassifies dropdowns as fill
+  const elInfo = await loc.first().evaluate(el => ({
+    tag: el.tagName.toLowerCase(),
+    role: el.getAttribute('role'),
+    type: el.getAttribute('type'),
+    isContentEditable: (el as HTMLElement).isContentEditable,
+  }));
+
+  // If it's a <select>, delegate to selectOption
+  if (elInfo.tag === 'select') {
+    await loc.first().selectOption({ label: value }, { timeout: 3000 }).catch(async () => {
+      // Fallback: try by value
+      await loc.first().selectOption(value, { timeout: 3000 });
+    });
+    return;
+  }
+
+  // If it's a combobox or non-input element, delegate to combobox strategy
+  if (elInfo.role === 'combobox' || elInfo.role === 'listbox' ||
+      (elInfo.tag !== 'input' && elInfo.tag !== 'textarea' && !elInfo.isContentEditable)) {
+    await executeCombobox(page, action, value);
+    return;
+  }
+
   // Skip if field already has a real value (avoid overwriting auto-fill)
   // But always overwrite phone fields (country code dropdown often pre-fills junk like "(+91)")
   const isPhoneField = action.description.toLowerCase().includes('phone') ||
@@ -206,7 +245,13 @@ async function executeFill(page: Page, action: FieldAction, value: string): Prom
     if (existing && existing.length > 1) return;
   }
 
-  await loc.first().fill(value);
+  // Try normal fill first, fallback to click+type if element rejects .fill()
+  try {
+    await loc.first().fill(value);
+  } catch {
+    await loc.first().click({ timeout: 2000 });
+    await page.keyboard.type(value, { delay: 50 });
+  }
 
   // Press Tab after year fields to escape focus traps
   const desc = action.description.toLowerCase();
