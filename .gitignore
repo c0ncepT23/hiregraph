@@ -3,4 +3,6 @@ dist/
 .env
 .env.local
 *.tgz
-deploy/hiregraph-data/
+deploy/hiregraph-data/*.json
+deploy/hiregraph-data/*.pdf
+deploy/hiregraph-data/recipes/
