@@ -11,13 +11,18 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
+
+# Build from source
+COPY src/ ./src/
+COPY tsup.config.ts tsconfig.json ./
+RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
 
 # Install Playwright Chromium
 RUN npx playwright install chromium
-
-COPY dist/ ./dist/
-COPY src/data/ ./dist/data/
 
 # Copy user data (identity.json already has container paths, resume.pdf included)
 RUN mkdir -p /root/.hiregraph/recipes /root/.hiregraph/resumes
