@@ -19,18 +19,12 @@ RUN npx playwright install chromium
 COPY dist/ ./dist/
 COPY src/data/ ./dist/data/
 
-# Copy deploy data (identity, answers, recipes, resume)
-# Use a wildcard so the build doesn't fail if the directory is missing
+# Copy user data (identity.json already has container paths, resume.pdf included)
 RUN mkdir -p /root/.hiregraph/recipes /root/.hiregraph/resumes
-COPY deploy/ /tmp/deploy/
-RUN if [ -d /tmp/deploy/hiregraph-data ]; then \
-      cp -r /tmp/deploy/hiregraph-data/* /root/.hiregraph/ 2>/dev/null || true; \
-    fi && \
-    if [ -f /root/.hiregraph/resume.pdf ]; then \
-      mv /root/.hiregraph/resume.pdf /root/.hiregraph/resumes/resume.pdf && \
-      node -e "const fs=require('fs');const p='/root/.hiregraph/identity.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));d.resume_path='/root/.hiregraph/resumes/resume.pdf';fs.writeFileSync(p,JSON.stringify(d,null,2))"; \
-    fi && \
-    rm -rf /tmp/deploy
+COPY deploy/hiregraph-data/ /root/.hiregraph/
+RUN if [ -f /root/.hiregraph/resume.pdf ]; then \
+      mv /root/.hiregraph/resume.pdf /root/.hiregraph/resumes/resume.pdf; \
+    fi
 
 # Railway sets env vars in dashboard — no .env needed
 # Required: ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
