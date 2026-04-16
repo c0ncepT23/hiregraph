@@ -376,16 +376,19 @@ async function clickThroughToApplyForm(page: Page): Promise<void> {
     }
   }
 
-  // Fallback: look for Apply buttons on the page
+  // Fallback: look for Apply/Interest buttons on the page
   const applySelectors = [
     'a:has-text("Apply for this job")',
     'a:has-text("Apply now")',
+    'a:has-text("I\'m interested")',
     'a:has-text("Apply")',
     'button:has-text("Apply for this job")',
     'button:has-text("Apply now")',
+    'button:has-text("I\'m interested")',
     'button:has-text("Apply")',
     '.posting-btn-submit',
     '[data-qa="btn-apply"]',
+    'a[title="I\'m interested"]',
   ];
 
   for (const sel of applySelectors) {
