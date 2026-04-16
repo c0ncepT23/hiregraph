@@ -390,6 +390,39 @@ async function executeCombobox(page: Page, action: FieldAction, value: string, j
     } catch { /* try next selector */ }
   }
 
+  // Broad fallback: find ANY visible dropdown/listbox option on the page
+  const broadSelectors = [
+    `[role="listbox"] [role="option"]:visible`,
+    `[role="listbox"] li:visible`,
+    `.lyte-drop-box li:visible`,
+    `ul[style*="display: block"] li`,
+    `.autocomplete-results li`,
+    `.dropdown-menu li`,
+  ];
+  for (const sel of broadSelectors) {
+    try {
+      const opts = page.locator(sel);
+      const count = await opts.count();
+      if (count > 0) {
+        // Prefer option containing user's city/country
+        const preferTerms = [jobData?.city, jobData?.country, jobData?.state]
+          .filter(Boolean).map(t => t!.toLowerCase());
+        for (let i = 0; i < Math.min(count, 10); i++) {
+          const text = (await opts.nth(i).textContent() || '').toLowerCase();
+          if (preferTerms.some(term => text.includes(term))) {
+            await opts.nth(i).click({ timeout: 2000 });
+            await page.waitForTimeout(300);
+            return;
+          }
+        }
+        // No preference match -- pick first
+        await opts.first().click({ timeout: 2000 });
+        await page.waitForTimeout(300);
+        return;
+      }
+    } catch { /* try next */ }
+  }
+
   // Keyboard fallback: arrow down + enter
   await page.keyboard.press('ArrowDown');
   await page.waitForTimeout(300);
