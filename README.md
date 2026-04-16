@@ -46,25 +46,36 @@ Send job links from your phone via Telegram and HireGraph auto-applies in the ba
 
 2. **Get your chat ID** -- message [@userinfobot](https://t.me/userinfobot), it replies with your chat ID.
 
-3. **Set environment variables** on your server:
-   ```
-   ANTHROPIC_API_KEY=sk-ant-...
-   TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-   TELEGRAM_CHAT_ID=your_chat_id
+3. **Set environment variables:**
+   ```bash
+   # Mac/Linux (add to ~/.bashrc or ~/.zshrc)
+   export ANTHROPIC_API_KEY="sk-ant-..."
+   export TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
+   export TELEGRAM_CHAT_ID="your_chat_id"
+
+   # Windows (PowerShell)
+   $env:ANTHROPIC_API_KEY="sk-ant-..."
+   $env:TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
+   $env:TELEGRAM_CHAT_ID="your_chat_id"
    ```
 
-4. **Deploy to Railway** (or any Docker host):
+4. **Run the daemon:**
+
+   **Option A: Run locally (simplest)**
+   ```bash
+   hiregraph daemon
+   ```
+   Keep this terminal open. Send job URLs to your Telegram bot from your phone -- it auto-applies using the browser on your machine.
+
+   **Option B: Deploy to a server (always-on)**
+
+   Deploy to Railway, a VPS, or any Docker host so the daemon runs 24/7:
    ```bash
    # Copy your profile data for the Docker build
    bash deploy/seed-data.sh
 
-   # Deploy
+   # Deploy to Railway
    railway up
-   ```
-
-   Or run locally:
-   ```bash
-   hiregraph daemon
    ```
 
 5. **Send a job URL** to your Telegram bot. It replies:
