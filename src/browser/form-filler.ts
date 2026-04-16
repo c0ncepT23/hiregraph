@@ -321,9 +321,26 @@ async function executeCombobox(page: Page, action: FieldAction, value: string, j
   await loc.first().click({ timeout: 2000 });
   await page.waitForTimeout(500);
 
-  // Clear and type to filter
-  await loc.first().fill('');
-  await loc.first().fill(value);
+  // Check if this element supports .fill() (input/textarea) or needs keyboard input (div)
+  const isTypable = await loc.first().evaluate(el => {
+    const tag = el.tagName.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || (el as HTMLElement).isContentEditable;
+  }).catch(() => false);
+
+  if (isTypable) {
+    await loc.first().fill('');
+    await loc.first().fill(value);
+  } else {
+    // For div-based comboboxes (Zoho, custom dropdowns): look for a nested input or use keyboard
+    const nestedInput = page.locator(`${action.selector} input, ${action.selector} ~ input, ${action.selector} + input`);
+    if (await nestedInput.count() > 0) {
+      await nestedInput.first().fill('');
+      await nestedInput.first().fill(value);
+    } else {
+      // Pure div dropdown -- just type with keyboard after clicking
+      await page.keyboard.type(value, { delay: 80 });
+    }
+  }
   await page.waitForTimeout(1000);
 
   // Collect all visible options matching the value
@@ -333,6 +350,8 @@ async function executeCombobox(page: Page, action: FieldAction, value: string, j
     `[data-baseweb="menu"] li:has-text("${value}")`,
     `[role="listbox"] [role="option"]:has-text("${value}")`,
     `.MuiAutocomplete-popper li:has-text("${value}")`,
+    `.lyte-drop-box li:has-text("${value}")`,
+    `lyte-drop-box [role="option"]:has-text("${value}")`,
   ];
 
   for (const optSel of optionSelectors) {
