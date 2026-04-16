@@ -438,6 +438,8 @@ function buildJobData(identity: IdentityConfig, resumePath: string): JobData {
     linkedin_url: identity.links?.linkedin,
     github_url: identity.links?.github,
     portfolio_url: identity.links?.portfolio,
+    current_employer: (identity as any).current_employer,
+    current_title: (identity as any).current_title,
     current_ctc: (identity as any).current_ctc,
     current_ctc_monthly: (identity as any).current_ctc_monthly,
     expected_ctc: (identity as any).expected_ctc,

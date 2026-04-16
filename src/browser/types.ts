@@ -68,6 +68,8 @@ export interface JobData {
   linkedin_url?: string;
   github_url?: string;
   portfolio_url?: string;
+  current_employer?: string;
+  current_title?: string;
   current_ctc?: string;
   current_ctc_monthly?: string;
   expected_ctc?: string;

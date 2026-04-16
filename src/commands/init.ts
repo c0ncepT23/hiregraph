@@ -153,6 +153,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
   let noticePeriod = '';
   let visaSponsorship = '';
   let linkedinUrl = '';
+  let githubUrl = '';
+  let portfolioUrl = '';
+  let currentEmployer = '';
+  let currentTitle = '';
 
   if (!isNonInteractive) {
     console.log('\n  These help auto-fill job application forms:\n');
@@ -162,7 +166,11 @@ export async function initCommand(options: InitOptions): Promise<void> {
       { type: 'input', name: 'phoneCountryCode', message: 'Phone country code (e.g. "India (+91)"):', default: '' },
       { type: 'input', name: 'city', message: 'Current city:', default: '' },
       { type: 'input', name: 'country', message: 'Country:', default: '' },
+      { type: 'input', name: 'currentEmployer', message: 'Current employer:', default: '' },
+      { type: 'input', name: 'currentTitle', message: 'Current title:', default: '' },
       { type: 'input', name: 'linkedinUrl', message: 'LinkedIn URL:', default: '' },
+      { type: 'input', name: 'githubUrl', message: 'GitHub URL:', default: '' },
+      { type: 'input', name: 'portfolioUrl', message: 'Portfolio/Website URL:', default: '' },
       { type: 'input', name: 'currentCtc', message: 'Current CTC/salary (e.g. "80 LPA" or "120000 USD"):', default: '' },
       { type: 'input', name: 'expectedCtc', message: 'Expected CTC/salary:', default: '' },
       { type: 'list', name: 'noticePeriod', message: 'Notice period:', choices: ['Immediate', '15 days', '30 days', '60 days', '90 days', 'Other'] },
@@ -173,7 +181,11 @@ export async function initCommand(options: InitOptions): Promise<void> {
     phoneCountryCode = appFields.phoneCountryCode;
     city = appFields.city;
     country = appFields.country;
+    currentEmployer = appFields.currentEmployer;
+    currentTitle = appFields.currentTitle;
     linkedinUrl = appFields.linkedinUrl;
+    githubUrl = appFields.githubUrl;
+    portfolioUrl = appFields.portfolioUrl;
     currentCtc = appFields.currentCtc;
     expectedCtc = appFields.expectedCtc;
     noticePeriod = appFields.noticePeriod === 'Other' ? '' : appFields.noticePeriod;
@@ -201,15 +213,19 @@ export async function initCommand(options: InitOptions): Promise<void> {
   if (name) identity.name = name;
   if (email) identity.email = email;
   if (phone) identity.phone = phone;
-  if (linkedinUrl) {
-    identity.links = { ...identity.links, linkedin: linkedinUrl };
-  }
+  const newLinks: Record<string, string> = { ...identity.links };
+  if (linkedinUrl) newLinks.linkedin = linkedinUrl;
+  if (githubUrl) newLinks.github = githubUrl;
+  if (portfolioUrl) newLinks.portfolio = portfolioUrl;
+  identity.links = newLinks;
 
   // Extra fields for identity.json (used for auto-apply form filling)
   const saveData: Record<string, unknown> = { ...identity };
   if (phoneCountryCode) saveData.phone_country_code = phoneCountryCode;
   if (city) saveData.city = city;
   if (country) saveData.country = country;
+  if (currentEmployer) saveData.current_employer = currentEmployer;
+  if (currentTitle) saveData.current_title = currentTitle;
   if (currentCtc) saveData.current_ctc = currentCtc;
   if (expectedCtc) saveData.expected_ctc = expectedCtc;
   if (noticePeriod) saveData.notice_period = noticePeriod;
