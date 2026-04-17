@@ -19,7 +19,28 @@ export async function executeStep(
   // Dismiss popups before filling
   await dismissPopups(page);
 
-  for (const action of step.actions) {
+  // Reorder: upload_file actions first — ATS forms often parse the resume
+  // and auto-fill fields (name, city, etc.), so upload before filling
+  const uploadActions = step.actions.filter(a => a.action_type === 'upload_file');
+  const otherActions = step.actions.filter(a => a.action_type !== 'upload_file');
+
+  if (uploadActions.length > 0) {
+    for (const action of uploadActions) {
+      try {
+        const value = await resolveValue(action.value_expression, jobData, action.description, action.action_type);
+        if (value) {
+          await executeAction(page, action, value, jobData);
+          filled.push(action.id);
+        }
+      } catch (err: any) {
+        errors.push(`${action.id}: ${err.message}`);
+      }
+    }
+    // Wait for ATS to parse the resume and auto-fill fields
+    await page.waitForTimeout(3000);
+  }
+
+  for (const action of otherActions) {
     try {
       // Check if the field is actually visible/present before attempting
       const fieldLoc = page.locator(action.selector);
