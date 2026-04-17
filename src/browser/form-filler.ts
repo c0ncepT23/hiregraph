@@ -343,93 +343,28 @@ async function executeCombobox(page: Page, action: FieldAction, value: string, j
   }
   await page.waitForTimeout(1000);
 
-  // Collect all visible options matching the value
+  // Try to pick from dropdown if there's a single exact match
   const optionSelectors = [
     `[role="option"]:has-text("${value}")`,
-    `li:has-text("${value}")`,
-    `[data-baseweb="menu"] li:has-text("${value}")`,
     `[role="listbox"] [role="option"]:has-text("${value}")`,
-    `.MuiAutocomplete-popper li:has-text("${value}")`,
-    `.lyte-drop-box li:has-text("${value}")`,
-    `lyte-drop-box [role="option"]:has-text("${value}")`,
+    `li:has-text("${value}")`,
   ];
 
   for (const optSel of optionSelectors) {
     try {
       const options = page.locator(optSel);
       const count = await options.count();
-
-      if (count === 0) continue;
-
       if (count === 1) {
-        // Single match — click it
         await options.first().click({ timeout: 2000 });
-        await page.waitForTimeout(300);
-        return;
-      }
-
-      // Multiple matches (e.g., "Hyderabad, Telangana, India" vs "Hyderabad, Pakistan")
-      // Prefer the one containing the user's state/country
-      const preferenceTerms = [
-        jobData?.country, jobData?.state, jobData?.city,
-      ].filter(Boolean).map(t => t!.toLowerCase());
-      for (let i = 0; i < count; i++) {
-        const text = await options.nth(i).textContent() || '';
-        const textLower = text.toLowerCase();
-        if (preferenceTerms.some(term => textLower.includes(term))) {
-          await options.nth(i).click({ timeout: 2000 });
-          await page.waitForTimeout(300);
-          return;
-        }
-      }
-
-      // No preference match — pick first
-      await options.first().click({ timeout: 2000 });
-      await page.waitForTimeout(300);
-      return;
-    } catch { /* try next selector */ }
-  }
-
-  // Broad fallback: find ANY visible dropdown/listbox option on the page
-  const broadSelectors = [
-    `[role="listbox"] [role="option"]:visible`,
-    `[role="listbox"] li:visible`,
-    `.lyte-drop-box li:visible`,
-    `ul[style*="display: block"] li`,
-    `.autocomplete-results li`,
-    `.dropdown-menu li`,
-  ];
-  for (const sel of broadSelectors) {
-    try {
-      const opts = page.locator(sel);
-      const count = await opts.count();
-      if (count > 0) {
-        // Prefer option containing user's city/country
-        const preferTerms = [jobData?.city, jobData?.country, jobData?.state]
-          .filter(Boolean).map(t => t!.toLowerCase());
-        for (let i = 0; i < Math.min(count, 10); i++) {
-          const text = (await opts.nth(i).textContent() || '').toLowerCase();
-          if (preferTerms.some(term => text.includes(term))) {
-            await opts.nth(i).click({ timeout: 2000 });
-            await page.waitForTimeout(300);
-            return;
-          }
-        }
-        // No preference match -- pick first
-        await opts.first().click({ timeout: 2000 });
         await page.waitForTimeout(300);
         return;
       }
     } catch { /* try next */ }
   }
 
-  // Keyboard fallback: arrow down + enter
-  await page.keyboard.press('ArrowDown');
+  // Multiple or no matches -- just dismiss the dropdown and keep typed text
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(300);
-
-  // Press Tab to close any remaining popover
   await page.keyboard.press('Tab');
 }
 
